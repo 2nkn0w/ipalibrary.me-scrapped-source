@@ -9,7 +9,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 # --- CONFIGURATION ---
 SITEMAP_URL = "https://ipalibrary.me/post-sitemap.xml"
-# Garantiza que el JSON se guarde en la misma carpeta que el script
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_FILE = os.path.join(BASE_DIR, "ipalibrary_source.json")
 
@@ -18,7 +17,73 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
 }
 
-# ... (resto de funciones decode_download_url y scrape_app_page quedan exactamente igual) ...
+def decode_download_url(encoded_href):
+    """ Extracts and decodes the Base64 URL from the download button """
+    try:
+        encoded_data = encoded_href.split('data=')[1]
+        decoded_str = base64.b64decode(encoded_data).decode('utf-8')
+        
+        match = re.search(r'url=([^&]+)', decoded_str)
+        if match:
+            return match.group(1)
+    except Exception:
+        pass
+    return None
+
+def scrape_app_page(url):
+    """ Scrapes a single app page for its metadata and download link """
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        if response.status_code != 200:
+            return None
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 1. Get App Name
+        name_tag = soup.find('h1')
+        name = name_tag.text.strip() if name_tag else "Unknown App"
+
+        # 2. Get App Icon
+        icon_url = "https://ipalibrary.me/favicon.ico"
+        img_tag = soup.find('img', {'class': lambda x: x and 'img-fluid' in x and 'rounded-5' in x})
+        if img_tag:
+            icon_url = img_tag.get('data-src') or img_tag.get('src')
+
+        # 3. Get Developer and Version
+        developer = "Unknown Developer"
+        version = "1.0"
+        dev_elements = soup.find_all('div', class_='ipa-developer')
+        for el in dev_elements:
+            text = el.get_text(strip=True)
+            if "Version:" in text:
+                version = text.replace("Version:", "").strip()
+            elif "bi-person-fill" in str(el):
+                developer = text.strip()
+
+        # 4. Get Download Link
+        download_url = None
+        a_tag = soup.find('a', href=re.compile(r'/dl\?data='))
+        if a_tag:
+            download_url = decode_download_url(a_tag['href'])
+
+        if download_url:
+            bundle_id = f"me.ipalibrary.{re.sub(r'[^a-zA-Z0-9]', '', name.lower())}"
+            
+            print(f"✅ Processed: {name} (v{version})")
+            return {
+                "name": name,
+                "bundleIdentifier": bundle_id,
+                "developerName": developer,
+                "version": version,
+                "versionDate": datetime.now().strftime("%Y-%m-%d"),
+                "downloadURL": download_url,
+                "localizedDescription": f"App: {name}\nVersion: {version}\nSource: IPALibrary",
+                "iconURL": icon_url,
+                "size": 0
+            }
+    except Exception as e:
+        print(f"⚠️ Error scraping {url}: {e}")
+    return None
 
 def run_scraper():
     print("--- 🛠️ IPALibrary AltStore Source Generator ---")
@@ -26,7 +91,6 @@ def run_scraper():
     try:
         print("🔍 Fetching URLs from sitemap...")
         r = requests.get(SITEMAP_URL, headers=HEADERS)
-        # Asegurarse de usar lxml para parsear XML
         sitemap_soup = BeautifulSoup(r.content, 'lxml-xml')
         urls = [loc.text for loc in sitemap_soup.find_all('loc') if "ipalibrary.me/" in loc.text]
         urls = [u for u in urls if u != "https://ipalibrary.me/" and not u.endswith('.xml')]
