@@ -106,11 +106,14 @@ def run_scraper():
 
     apps_list = [app for app in results if app is not None]
 
+    # Formateo de fecha y hora completa (ejemplo: Aug 26, 2026 - 11:15:30 UTC)
+    full_timestamp = datetime.now().strftime('%b %d, %Y - %H:%M:%S UTC')
+
     source_data = {
         "name": "IPALibrary Source",
         "identifier": "me.ipalibrary.source",
-        "subtitle": f"Last Update: {datetime.now().strftime('%b %d, %Y')}",
-        "description": "Custom AltStore source for IPALibrary apps.",
+        "subtitle": f"Last Update: {full_timestamp}",
+        "description": f"Custom AltStore source for IPALibrary apps. Updated at {full_timestamp}.",
         "iconURL": "https://ipalibrary.me/favicon.ico",
         "website": "https://ipalibrary.me",
         "apps": apps_list
