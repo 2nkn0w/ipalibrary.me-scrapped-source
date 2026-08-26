@@ -2,8 +2,8 @@ name: Auto Scrape IPALibrary
 
 on:
   schedule:
-    # Runs every Monday at 00:00 UTC
-    - cron: '0 0 * * 1'
+    # Runs every day at 00:00 UTC
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 permissions:
