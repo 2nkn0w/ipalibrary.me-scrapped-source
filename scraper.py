@@ -90,13 +90,14 @@ def run_scraper():
     
     try:
         print("🔍 Fetching URLs from sitemap...")
-        r = requests.get(SITEMAP_URL, headers=HEADERS)
+        r = requests.get(SITEMAP_URL, headers=HEADERS, timeout=20)
+        r.raise_for_status() # Lanza error si la web devuelve 404, 500, etc.
         sitemap_soup = BeautifulSoup(r.content, 'lxml-xml')
         urls = [loc.text for loc in sitemap_soup.find_all('loc') if "ipalibrary.me/" in loc.text]
         urls = [u for u in urls if u != "https://ipalibrary.me/" and not u.endswith('.xml')]
     except Exception as e:
         print(f"❌ Failed to read sitemap: {e}")
-        return
+        raise RuntimeError("Sitemap inaccessible or network error. Aborting run.")
 
     total_urls = len(urls)
     print(f"📦 Found {total_urls} potential apps. Starting multi-threaded extraction...")
@@ -105,6 +106,11 @@ def run_scraper():
         results = list(executor.map(scrape_app_page, urls))
 
     apps_list = [app for app in results if app is not None]
+
+    # --- CONTROL DE SEGURIDAD ---
+    if not apps_list:
+        print("❌ CRITICAL ERROR: 0 apps extracted. The web layout might have changed.")
+        raise RuntimeError("No apps were successfully scraped. Aborting file update to prevent corrupted data.")
 
     # Formateo de fecha y hora completa (ejemplo: Aug 26, 2026 - 11:15:30 UTC)
     full_timestamp = datetime.now().strftime('%b %d, %Y - %H:%M:%S UTC')
