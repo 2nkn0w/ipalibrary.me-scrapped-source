@@ -13,4 +13,4 @@ A high-performance, automated AltStore/SideStore source that aggregates IPAs fro
 To add these apps to your device, copy and paste the link below into **AltStore**, **SideStore**, or **LiveContainer**:
 
 ```text
-https://raw.githubusercontent.com/2nkn0w/ipalibrary.me-scrapped-source/main/ipalibrary_source.json
+https://raw.githubusercontent.com/2nkn0w/ipalibrary.me-source/main/ipalibrary_source.json
